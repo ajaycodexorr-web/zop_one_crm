@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zop One CRM</title>
+  <meta name="description" content="Real-time Zop One Leads & Conversations CRM Panel">
+
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="https://www.zopdealer.com/images/logo.png">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Instant Synchronous Auth Session Check (Prevents ANY login screen flash on reload) -->
+  <script>
+    (function() {
+      try {
+        var sess = localStorage.getItem('crm_auth_session_v1');
+        if (sess) {
+          var parsed = JSON.parse(sess);
+          if (parsed && parsed.userId) {
+            document.documentElement.className = 'is-authenticated';
+            return;
+          }
+        }
+      } catch (e) {}
+      document.documentElement.className = 'is-unauthenticated';
+    })();
+  </script>
+  <style>
+    /* Zero-Flash Instant View Switching */
+    html.is-authenticated #authOverlay {
+      display: none !important;
+    }
+    html.is-authenticated .crm-app-layout {
+      display: flex !important;
+    }
+    html.is-unauthenticated #authOverlay {
+      display: flex !important;
+    }
+    html.is-unauthenticated .crm-app-layout {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Full Screen Authentication / Login Overlay with Animated Aurora Mesh -->
+  <div class="auth-overlay" id="authOverlay">
+    <!-- Animated Dynamic Background Layer -->
+    <div class="auth-bg-ambient">
+      <div class="auth-orb auth-orb-1"></div>
+      <div class="auth-orb auth-orb-2"></div>
+      <div class="auth-orb auth-orb-3"></div>
+      <div class="auth-orb auth-orb-4"></div>
+      <div class="auth-grid-pattern"></div>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo-wrap">
+          <div class="auth-logo-glow"></div>
+          <img src="https://www.zopdealer.com/images/logo.png" alt="Zop One Logo" class="auth-logo-img">
+        </div>
+        <h2>Zop One</h2>
+        <p>Sign in to access your CRM workspace & leads</p>
+      </div>
+
+      <div class="auth-alert-error" id="loginErrorAlert" style="display: none;"></div>
+
+      <form id="loginForm" class="auth-form">
+        <div class="form-group">
+          <label for="loginEmail">Email Address</label>
+          <div class="input-with-icon">
+            <i class="fa-regular fa-envelope input-icon"></i>
+            <input type="email" id="loginEmail" placeholder="admin@zopmedia.com" required autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <div class="input-with-icon">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="btn-toggle-password" id="togglePasswordBtn" title="Toggle password visibility">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-auth-submit" id="loginSubmitBtn">
+          <span>Sign In to CRM</span> <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="crm-app-layout app-container" style="display: none;">
+    <!-- 1. LEFT NAVIGATION SIDEBAR -->
+    <aside class="nav-sidebar">
+      <div class="nav-brand-header">
+        <div class="brand-logo-card">
+          <div class="brand-logo-glow"></div>
+          <img src="https://www.zopdealer.com/images/logo.png" alt="Zop One Logo" class="brand-logo-img">
+        </div>
+        <div class="brand-text">
+          <h2 class="brand-name">Zop One</h2>
+          <span class="brand-tagline">CRM Panel</span>
+        </div>
+      </div>
+
+      <div class="nav-menu-group">
+        <div class="nav-menu-label">MENU</div>
+
+        <!-- LEADS (ON TOP) -->
+        <button class="nav-menu-item active" id="navItemLeads" data-view="leads">
+          <div class="nav-item-icon"><i class="fa-solid fa-users-line"></i></div>
+          <span class="nav-item-text">Leads</span>
+          <span class="nav-badge badge-leads" id="navLeadsCount">0</span>
+        </button>
+
+        <!-- CONVERSATIONS (BELOW LEADS) -->
+        <button class="nav-menu-item" id="navItemConversations" data-view="conversations">
+          <div class="nav-item-icon"><i class="fa-regular fa-comments"></i></div>
+          <span class="nav-item-text">Conversations</span>
+          <span class="nav-badge badge-conversations" id="navConversationsCount">0</span>
+        </button>
+
+        <!-- ACTIVITY LOGS (BELOW CONVERSATIONS) -->
+        <button class="nav-menu-item" id="navItemLogs" data-view="logs">
+          <div class="nav-item-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          <span class="nav-item-text">Logs</span>
+        </button>
+
+        <!-- TEAM MANAGEMENT PAGE -->
+        <button class="nav-menu-item" id="navItemTeam" data-view="team" title="Manage Sub-Users & Team">
+          <div class="nav-item-icon"><i class="fa-solid fa-users-gear"></i></div>
+          <span class="nav-item-text">Team</span>
+        </button>
+
+        <!-- SETTINGS WITH EXPANDABLE SUBMENU -->
+        <div class="nav-group-wrapper" id="navSettingsGroupWrapper">
+          <button class="nav-menu-item nav-has-submenu" id="navItemSettings" data-view="settings" title="Settings & Security">
+            <div class="nav-item-icon"><i class="fa-solid fa-gear"></i></div>
+            <span class="nav-item-text">Settings</span>
+            <i class="fa-solid fa-chevron-down nav-submenu-caret" id="navSettingsCaret"></i>
+          </button>
+
+          <!-- Settings Submenu Options -->
+          <div class="nav-submenu-list" id="navSettingsSubmenu">
+            <button class="nav-submenu-item" id="navSubItemPassword" data-settings-tab="account" title="Change Password">
+              <div class="nav-subitem-icon"><i class="fa-solid fa-key"></i></div>
+              <span class="nav-subitem-text">Change Password</span>
+            </button>
+            <button class="nav-submenu-item" id="navSubItemPermissions" data-settings-tab="permissions" title="User Permissions">
+              <div class="nav-subitem-icon"><i class="fa-solid fa-shield-halved"></i></div>
+              <span class="nav-subitem-text">Permissions</span>
+              <span class="user-role-badge super_admin nav-sub-badge" id="navPermBadge" style="display: none; font-size: 9px; padding: 1px 5px; margin-left: auto;">Admin</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Initials Profile / Switcher Footer -->
+      <div class="nav-footer">
+        <div id="userProfileCardWrap" style="width: 100%;">
+          <div class="user-profile-card">
+            <div class="user-avatar-initials">AU</div>
+            <div class="user-info">
+              <span class="user-name">Admin User</span>
+              <span class="user-status"><span class="status-dot"></span> Online</span>
+            </div>
+          </div>
+        </div>
+
+        <button id="configBtn" class="nav-config-btn" title="Database Settings" style="display: none;">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- 2. MAIN APP CONTENT CONTAINER -->
+    <main class="app-main-content">
+
+      <!-- VIEW 1: LEADS DASHBOARD (MATCHING SCREENSHOT 1) -->
+      <section class="view-section" id="leadsViewSection" style="display: flex;">
+        <div class="leads-dashboard-container">
+          <!-- Leads View Top Header -->
+          <div class="view-header">
+            <div class="header-title-wrap">
+              <h2 style="font-size: 18px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-users" style="color: var(--crm-primary);"></i> Leads
+              </h2>
+            </div>
+            <div class="header-actions" style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+              <button type="button" class="btn-primary" id="openAddLeadModalBtn" style="padding: 8px 16px; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 6px; white-space: nowrap; border-radius: 8px;">
+                <i class="fa-solid fa-plus"></i> Add Lead
+              </button>
+              <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="leadsSearchInput" placeholder="Search leads by name, phone or message...">
+              </div>
+
+              <!-- Header Notification Bell Wrap -->
+              <div class="header-notification-wrap" id="headerNotificationWrap">
+                <button type="button" class="header-notification-btn" id="headerNotificationBtn" title="Notifications">
+                  <i class="fa-regular fa-bell"></i>
+                  <span class="header-notif-badge" id="headerNotifBadge" style="display: none;">0</span>
+                </button>
+
+                <!-- Notification Dropdown Popover -->
+                <div class="header-notification-dropdown" id="headerNotificationDropdown" style="display: none;">
+                  <div class="notif-dropdown-header">
+                    <div class="notif-header-title">
+                      <i class="fa-solid fa-bell" style="color: var(--crm-primary);"></i>
+                      <span>Notifications</span>
+                      <span class="notif-unread-count-pill" id="notifUnreadPill">0 New</span>
+                    </div>
+                    <button type="button" class="btn-mark-all-read" id="notifMarkAllReadBtn">Mark all as read</button>
+                  </div>
+
+                  <div class="notif-items-list" id="notifItemsList">
+                    <!-- Rendered by JS -->
+                  </div>
+
+                  <div class="notif-dropdown-footer">
+                    <button type="button" class="btn-clear-notifs" id="notifClearAllBtn">Clear all notifications</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filter Pills -->
+          <div class="leads-filter-bar">
+            <div class="filter-pills">
+              <button class="lead-filter-pill active" id="leadsFilterAllBtn" data-filter="all">
+                All Leads (<span id="countAllLeads">0</span>)
+              </button>
+
+              <!-- Status Filter Dropdown -->
+              <div class="lead-status-dropdown-wrapper" id="leadStatusDropdownWrapper">
+                <button type="button" class="lead-filter-pill status-dropdown-btn" id="leadStatusDropdownBtn" aria-haspopup="true" aria-expanded="false">
+                  <span class="status-dropdown-btn-content" id="statusDropdownBtnContent">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span id="statusDropdownCurrentLabel">Status</span>
+                  </span>
+                  <i class="fa-solid fa-chevron-down status-dropdown-caret" id="statusDropdownCaret"></i>
+                </button>
+
+                <div class="lead-status-dropdown-menu" id="leadStatusDropdownMenu" style="display: none;">
+                  <div class="status-dropdown-header">Filter by Status</div>
+                  <div class="status-dropdown-list">
+                    <button type="button" class="status-dropdown-item" data-status="new">
+                      <span class="status-indicator-dot dot-new"></span>
+                      <span class="status-item-name">New</span>
+                      <span class="status-item-count" id="countNewLeads">0</span>
+                      <i class="fa-solid fa-check status-check-icon"></i>
+                    </button>
+                    <button type="button" class="status-dropdown-item" data-status="contacted">
+                      <span class="status-indicator-dot dot-contacted"></span>
+                      <span class="status-item-name">Contacted</span>
+                      <span class="status-item-count" id="countContactedLeads">0</span>
+                      <i class="fa-solid fa-check status-check-icon"></i>
+                    </button>
+                    <button type="button" class="status-dropdown-item" data-status="no_answer">
+                      <span class="status-indicator-dot dot-no-answer"></span>
+                      <span class="status-item-name">No Answer</span>
+                      <span class="status-item-count" id="countNoAnswerLeads">0</span>
+                      <i class="fa-solid fa-check status-check-icon"></i>
+                    </button>
+                    <button type="button" class="status-dropdown-item" data-status="follow_up">
+                      <span class="status-indicator-dot dot-follow-up"></span>
+                      <span class="status-item-name">Follow Up</span>
+                      <span class="status-item-count" id="countFollowUpLeads">0</span>
+                      <i class="fa-solid fa-check status-check-icon"></i>
+                    </button>
+                    <button type="button" class="status-dropdown-item" data-status="converted">
+                      <span class="status-indicator-dot dot-converted"></span>
+                      <span class="status-item-name">Converted</span>
+                      <span class="status-item-count" id="countConvertedLeads">0</span>
+                      <i class="fa-solid fa-check status-check-icon"></i>
+                    </button>
+                    <button type="button" class="status-dropdown-item" data-status="lost">
+                      <span class="status-indicator-dot dot-lost"></span>
+                      <span class="status-item-name">Lost</span>
+                      <span class="status-item-count" id="countLostLeads">0</span>
+                      <i class="fa-solid fa-check status-check-icon"></i>
+                    </button>
+                    <div class="status-dropdown-divider"></div>
+                    <button type="button" class="status-dropdown-item item-deleted" data-status="deleted">
+                      <span class="status-indicator-dot dot-deleted"></span>
+                      <span class="status-item-name">Deleted</span>
+                      <span class="status-item-count" id="countDeletedLeads">0</span>
+                      <i class="fa-solid fa-check status-check-icon"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="leads-filter-right-actions">
+              <!-- Date Range Filter Dropdown -->
+              <div class="lead-date-filter-wrapper" id="leadDateFilterWrapper">
+                <button type="button" class="lead-date-picker-btn" id="leadDateFilterBtn" aria-haspopup="true" aria-expanded="false" title="Filter leads by date range">
+                  <i class="fa-regular fa-calendar-days date-picker-icon"></i>
+                  <span class="date-picker-btn-text" id="dateFilterBtnText">All Time</span>
+                  <span class="date-picker-clear-quick" id="dateFilterClearQuickBtn" title="Clear date filter" style="display: none;">&times;</span>
+                  <i class="fa-solid fa-chevron-down date-picker-caret"></i>
+                </button>
+
+                <!-- Date Range Picker Popover Dropdown -->
+                <div class="date-range-picker-popover" id="dateRangePickerPopover" style="display: none;">
+                  <div class="drp-header">
+                    <span class="drp-title"><i class="fa-regular fa-calendar-check" style="color: var(--crm-primary);"></i> Filter by Date Range</span>
+                    <button type="button" class="drp-close-btn" id="drpCloseBtn">&times;</button>
+                  </div>
+
+                  <div class="drp-body">
+                    <!-- Left Presets Sidebar -->
+                    <div class="drp-presets-sidebar">
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="all" checked>
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Maximum (All Time)</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="today">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Today</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="yesterday">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Yesterday</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="last_7_days">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Last 7 days</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="last_14_days">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Last 14 days</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="last_30_days">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Last 30 days</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="this_week">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">This week</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="last_week">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Last week</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="this_month">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">This month</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="last_month">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Last month</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="this_quarter">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">This quarter</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="last_quarter">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Last quarter</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="this_year">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">This year</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="last_year">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Last year</span>
+                      </label>
+                      <label class="drp-preset-option">
+                        <input type="radio" name="drpPreset" value="custom">
+                        <span class="drp-radio-custom"></span>
+                        <span class="drp-preset-label">Custom range</span>
+                      </label>
+                    </div>
+
+                    <!-- Right Dual Month Interactive Calendar -->
+                    <div class="drp-calendars-container">
+                      <div class="drp-calendars-header-nav">
+                        <button type="button" class="drp-nav-btn prev" id="drpPrevMonthBtn" title="Previous month"><i class="fa-solid fa-chevron-left"></i></button>
+                        <div class="drp-month-titles">
+                          <span class="drp-month-title" id="drpMonthTitleLeft">Month 1</span>
+                          <span class="drp-month-title" id="drpMonthTitleRight">Month 2</span>
+                        </div>
+                        <button type="button" class="drp-nav-btn next" id="drpNextMonthBtn" title="Next month"><i class="fa-solid fa-chevron-right"></i></button>
+                      </div>
+
+                      <div class="drp-dual-calendars" id="drpDualCalendarsWrap">
+                        <div class="drp-calendar-month left" id="drpCalendarLeft"></div>
+                        <div class="drp-calendar-month right" id="drpCalendarRight"></div>
+                      </div>
+
+                      <div class="drp-range-inputs-row">
+                        <div class="drp-date-input-wrap">
+                          <label>Start Date</label>
+                          <input type="text" id="drpStartDateInput" readonly placeholder="Start date">
+                        </div>
+                        <span class="drp-input-separator">—</span>
+                        <div class="drp-date-input-wrap">
+                          <label>End Date</label>
+                          <input type="text" id="drpEndDateInput" readonly placeholder="End date">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="drp-footer">
+                    <div class="drp-footer-left">
+                      <button type="button" class="btn-drp-clear" id="drpClearBtn" title="Reset date filter and show all leads"><i class="fa-solid fa-arrow-rotate-left"></i> Clear Filter</button>
+                      <span class="drp-helper-text" id="drpHelperText">Showing all leads (All Time)</span>
+                    </div>
+                    <div class="drp-footer-actions">
+                      <button type="button" class="btn-drp-cancel" id="drpCancelBtn">Cancel</button>
+                      <button type="button" class="btn-drp-apply" id="drpApplyBtn">Update</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button id="exportExcelBtn" class="btn-export-excel" title="Export leads to Excel">
+                <i class="fa-solid fa-file-excel"></i> Export to Excel
+              </button>
+            </div>
+          </div>
+
+          <!-- Leads Table Container -->
+          <div class="leads-table-container">
+            <div class="leads-table-scroll-wrapper">
+              <!-- Table Header Row (Matching User Screenshot) -->
+              <div class="leads-table-header">
+                <div class="col-header col-name">Name</div>
+                <div class="col-header col-phone">Phone number</div>
+                <div class="col-header col-query">User Query</div>
+                <div class="col-header col-platform">Source</div>
+                <div class="col-header col-assignee">Assigned</div>
+                <div class="col-header col-status">Status</div>
+                <div class="col-header col-notes">Notes</div>
+                <div class="col-header col-date">Created Date</div>
+                <div class="col-header col-actions">Action</div>
+              </div>
+
+              <!-- Leads Card Table List -->
+              <div class="leads-list-scroll">
+                <div class="leads-loading-state" id="leadsLoadingState">
+                  <div class="spinner"></div>
+                  <p>Fetching leads...</p>
+                </div>
+
+                <div class="leads-empty-state" id="leadsEmptyState" style="display: none;">
+                  <i class="fa-solid fa-user-group"></i>
+                  <h3>No leads found</h3>
+                  <p>Incoming customer queries and leads will automatically populate here.</p>
+                </div>
+
+                <div class="leads-cards-list" id="leadsCardsList">
+                  <!-- Dynamic lead rows rendered via JavaScript -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Leads Pagination Footer Bar -->
+            <div class="pagination-bar" id="leadsPaginationBar" style="display: flex;">
+              <div class="pagination-info">
+                Showing page <strong id="leadsCurrentPageNum">1</strong> of <strong id="leadsTotalPagesNum">1</strong> (<span id="leadsTotalRecordsNum">0</span> total leads)
+              </div>
+              <div class="pagination-controls">
+                <button type="button" class="btn-page-step" id="leadsPrevBtn" disabled>
+                  <i class="fa-solid fa-chevron-left"></i> Previous
+                </button>
+                <div class="page-numbers-wrap" id="leadsPageNumbers"></div>
+                <button type="button" class="btn-page-step" id="leadsNextBtn" disabled>
+                  Next <i class="fa-solid fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: CONVERSATIONS (2-COLUMN CHAT LAYOUT MATCHING SCREENSHOT 2) -->
+      <section class="view-section" id="conversationsViewSection" style="display: none;">
+
+        <!-- Column 1: Conversations List Pane (Team Inbox) -->
+        <aside class="conversations-pane">
+          <div class="conv-header">
+            <div class="conv-title-row">
+              <h2>Team inbox</h2>
+              <span class="conv-dropdown-icon"><i class="fa-solid fa-chevron-down"></i></span>
+            </div>
+
+            <div class="search-input-wrap small">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="convSearchInput" placeholder="Search conversations...">
+            </div>
+
+            <div class="conv-filter-tabs">
+              <button class="conv-tab active" data-filter="all">All <span id="convAllCount">0</span></button>
+              <button class="conv-tab" data-filter="unread">Unread <span id="convUnreadCount">0</span></button>
+            </div>
+
+            <div class="conv-section-subtitle">
+              <span>Active Inbound</span>
+              <span id="convActiveCount">0 conversations</span>
+            </div>
+          </div>
+
+          <!-- Conversations scroll list -->
+          <div class="conversations-list" id="conversationsList">
+            <!-- Rendered by JS -->
+          </div>
+        </aside>
+
+        <!-- Column 2: Active Chat Window -->
+        <section class="chat-pane" id="chatPane">
+          <!-- Chat Placeholder when no contact is selected -->
+          <div class="chat-placeholder" id="chatPlaceholder">
+            <div class="placeholder-content">
+              <div class="placeholder-icon"><i class="fa-regular fa-comments"></i></div>
+              <h2>Select a Conversation</h2>
+              <p>Choose a lead or contact from the list on the left to start live messaging.</p>
+            </div>
+          </div>
+
+          <!-- Active Chat Interface -->
+          <div class="active-chat-container" id="activeChatView" style="display: none; position: relative;">
+            <!-- Drag & Drop Overlay Indicator -->
+            <div class="chat-drag-drop-overlay" id="chatDragDropOverlay" style="display: none;">
+              <div class="drag-drop-card">
+                <i class="fa-solid fa-cloud-arrow-up drag-drop-icon"></i>
+                <h3>Drop Image or File Here</h3>
+                <p>Release to attach image to message</p>
+              </div>
+            </div>
+
+            <!-- Header -->
+            <div class="chat-header">
+              <!-- Avatar with user initials -->
+              <div class="chat-avatar-wrap">
+                <div class="chat-contact-avatar" id="chatContactAvatar">ML</div>
+              </div>
+
+              <div class="chat-header-info">
+                <div class="name-status-row">
+                  <h3 id="chatContactName">Maya Lin</h3>
+                </div>
+                <div class="phone-id-row">
+                  <span id="chatContactPhone"><i class="fa-solid fa-phone"></i> +91 98765 43210</span>
+                </div>
+              </div>
+
+              <div class="chat-header-actions">
+                <!-- 24-Hour WhatsApp Messaging Window Timer Badge -->
+                <div class="window-timer-badge active" id="chatWindowTimerBadge"
+                  title="24-Hour WhatsApp Messaging Window Status">
+                  <i class="fa-regular fa-clock"></i>
+                  <span id="chatWindowTimerText">24h 00m</span>
+                </div>
+
+                <button id="markReadBtn" class="icon-action-btn" title="Mark as read">
+                  <i class="fa-regular fa-envelope-open"></i>
+                </button>
+                <button id="refreshChatBtn" class="icon-action-btn" title="Refresh messages">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+                <button id="deleteLeadBtn" class="icon-action-btn delete" title="Delete conversation & lead">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Error Banner -->
+            <div class="chat-error-banner" id="chatErrorBanner" style="display: none;">
+              <div class="error-content">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="chatErrorMessage">Failed to send message.</span>
+              </div>
+              <button id="closeErrorBannerBtn" class="close-error-btn">&times;</button>
+            </div>
+
+            <!-- Messages Body -->
+            <div class="chat-messages-body" id="chatMessagesBody">
+              <div class="messages-loading" id="messagesLoading">
+                <div class="spinner"></div>
+                <span>Loading messages...</span>
+              </div>
+
+              <div class="messages-empty-chat" id="messagesEmptyChat" style="display: none;">
+                <i class="fa-regular fa-comments"></i>
+                <p>No messages in this conversation yet.</p>
+              </div>
+
+              <div class="messages-stream" id="messagesStream"></div>
+            </div>
+
+            <!-- Composer Footer -->
+            <footer class="chat-composer-footer">
+              <!-- Staged Attachments Tray -->
+              <div class="composer-attachments-tray" id="composerAttachmentsTray" style="display: none;">
+                <div class="tray-header">
+                  <span class="tray-title"><i class="fa-solid fa-paperclip"></i> Staged Media (<span
+                      id="trayCount">0</span>)</span>
+                  <button type="button" class="tray-clear-all-btn" id="clearAllAttachmentsBtn">Clear all</button>
+                </div>
+                <div class="tray-items-list" id="trayItemsList"></div>
+              </div>
+
+              <!-- 24-Hour Messaging Window Expired Banner -->
+              <div class="window-expired-banner" id="windowExpiredBanner" style="display: none;">
+                <div class="expired-text">
+                  <i class="fa-solid fa-lock"></i>
+                  <span>24-Hour messaging window is closed. Custom messages are disabled by WhatsApp Meta policy.</span>
+                </div>
+              </div>
+
+              <form id="sendMessageForm" class="message-form">
+                <div class="input-actions-left">
+                  <button type="button" class="composer-icon-btn" title="Attach Media or File" id="attachmentMenuBtn">
+                    <i class="fa-solid fa-paperclip"></i>
+                  </button>
+
+                  <!-- Attachment Popover -->
+                  <div class="attachment-popover" id="attachmentPopover" style="display: none;">
+                    <button type="button" class="attachment-popover-item" id="attachImageFileBtn">
+                      <span class="popover-icon-circle image-circle"><i class="fa-solid fa-image"></i></span>
+                      <div class="popover-item-text">
+                        <strong>Upload Images</strong>
+                        <span>Photos or graphics</span>
+                      </div>
+                    </button>
+                    <button type="button" class="attachment-popover-item" id="attachDocFileBtn">
+                      <span class="popover-icon-circle doc-circle"><i class="fa-solid fa-file-pdf"></i></span>
+                      <div class="popover-item-text">
+                        <strong>Upload PDF Document</strong>
+                        <span>Brochures & catalogs</span>
+                      </div>
+                    </button>
+                    <button type="button" class="attachment-popover-item" id="attachUrlBtn">
+                      <span class="popover-icon-circle url-circle"><i class="fa-solid fa-link"></i></span>
+                      <div class="popover-item-text">
+                        <strong>Attach by URL</strong>
+                        <span>Web links to images/PDFs</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  <input type="file" id="imageFileInput" accept="image/jpeg,image/png,image/webp,image/gif" multiple
+                    style="display: none;">
+                  <input type="file" id="docFileInput" accept=".pdf,application/pdf" style="display: none;">
+                </div>
+
+                <div class="message-input-wrapper">
+                  <textarea id="messageTextInput" class="message-textarea"
+                    placeholder="Type a WhatsApp message..."
+                    rows="1"></textarea>
+                </div>
+
+                <div class="input-actions-right">
+                  <button type="submit" id="sendMessageBtn" class="send-message-btn" title="Send Message">
+                    <i class="fa-solid fa-paper-plane send-icon"></i>
+                    <div class="spinner-small" style="display: none;"></div>
+                    <span>Send</span>
+                  </button>
+                </div>
+              </form>
+            </footer>
+          </div>
+        </section>
+
+        <!-- Column 3: Contact Details & Notes Panel (Matching GoHighLevel UI Screenshot) -->
+        <aside class="contact-details-pane" id="contactDetailsPane" style="display: none;">
+          <!-- Panel Header -->
+          <div class="contact-details-header">
+            <h3>Details</h3>
+          </div>
+
+          <div class="contact-details-scrollable">
+            <!-- Contact Profile Card -->
+            <div class="contact-profile-card">
+              <div class="contact-card-top">
+                <div class="contact-avatar-badge" id="contactDetailsAvatar">AJ</div>
+                <div class="contact-phone-block">
+                  <div class="contact-name-title" id="contactDetailsName">Maya Lin</div>
+                  <div class="contact-phone-row">
+                    <span class="contact-phone-text" id="contactDetailsPhone">+91 98765 43210</span>
+                    <button type="button" class="btn-copy-phone" id="copyContactPhoneBtn" title="Copy Phone Number">
+                      <i class="fa-regular fa-copy"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Owner & Status Section -->
+              <div class="contact-meta-grid">
+                <div class="meta-field-group">
+                  <label class="meta-label">Owner</label>
+                  <div class="meta-owner-pill">
+                    <select id="contactDetailsOwnerSelect" class="contact-owner-dropdown" title="Change Assigned Owner">
+                      <option value="">Unassigned</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="meta-field-group">
+                  <label class="meta-label">Status</label>
+                  <select id="contactDetailsStatusSelect" class="contact-status-dropdown" title="Change Lead Status">
+                    <option value="new">New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="no_answer">No Answer</option>
+                    <option value="follow_up">Follow Up</option>
+                    <option value="converted">Converted</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Tags / Source -->
+              <div class="contact-tags-row">
+                <span class="contact-tag-label">Source:</span>
+                <span class="tag-pill whatsapp" id="contactDetailsPlatformPill"><i class="fa-brands fa-whatsapp"></i> Direct WhatsApp</span>
+                <span class="tag-pill lead-type" id="contactDetailsCategory">Inbound Lead</span>
+              </div>
+            </div>
+
+            <!-- Notes Section (Add Note & History Feed) -->
+            <div class="contact-notes-add-box">
+              <div class="add-note-header">
+                <span class="add-note-title"><i class="fa-solid fa-pen"></i> Add Note</span>
+              </div>
+              <form id="contactDetailsAddNoteForm">
+                <textarea id="contactDetailsNoteInput" class="contact-note-textarea" placeholder="Add a note or customer update..." rows="2" required></textarea>
+                <div class="add-note-actions">
+                  <button type="submit" id="contactDetailsAddNoteSubmitBtn" class="btn-submit-note">
+                    <i class="fa-solid fa-plus"></i> Add Note
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Notes History Listing Feed -->
+            <div class="contact-notes-section">
+              <div class="notes-feed-title">
+                <span><i class="fa-solid fa-clock-rotate-left"></i> Notes History</span>
+                <span class="notes-count-badge" id="contactNotesCountBadge">0</span>
+              </div>
+
+              <div class="contact-empty-notes" id="contactDetailsEmptyNotes" style="display: none;">
+                <i class="fa-regular fa-note-sticky"></i>
+                <p>No notes recorded yet for this contact.</p>
+              </div>
+
+              <div class="contact-notes-feed-list" id="contactDetailsNotesList">
+                <!-- Rendered dynamically by JS -->
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- VIEW 3: ACTIVITY LOGS & AUDIT TRAIL -->
+      <section class="view-section" id="logsViewSection" style="display: none;">
+        <div class="leads-dashboard-container">
+          <!-- View Header -->
+          <div class="view-header">
+            <div class="header-title-wrap">
+              <h2 style="font-size: 18px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-clock-rotate-left" style="color: var(--crm-primary);"></i> Activity & Action Logs
+              </h2>
+              <span class="header-subtitle" style="font-size: 12px; color: var(--text-muted);">Audit log tracking lead status changes, deletions, message sending, and assignee updates</span>
+            </div>
+            <div class="header-actions" style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+              <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="logsSearchInput" placeholder="Search logs by action, lead or user...">
+              </div>
+              <button type="button" class="header-notification-btn" title="Notifications">
+                <i class="fa-regular fa-bell"></i>
+                <span class="header-notif-badge" style="display: none;">0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Logs Table Container -->
+          <div class="leads-table-wrapper">
+            <div class="logs-table-header">
+              <div class="col-log-time">Timestamp</div>
+              <div class="col-log-action">Action</div>
+              <div class="col-log-lead">Target Lead</div>
+              <div class="col-log-performer">User</div>
+              <div class="col-log-details">Details</div>
+            </div>
+
+            <div class="logs-list-body" id="logsCardsList">
+              <!-- Rendered dynamically by JavaScript -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="leads-empty-state" id="logsEmptyState" style="display: none;">
+              <div class="empty-icon" style="font-size: 40px; color: #22c55e; margin-bottom: 12px;"><i class="fa-solid fa-clipboard-list"></i></div>
+              <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main);">No Activity Logs Available</h3>
+              <p style="color: #64748b; font-size: 13px; margin-top: 4px; max-width: 480px;">User actions like status updates, lead deletions, and WhatsApp messages will be logged here automatically.</p>
+            </div>
+
+            <!-- Activity Logs Pagination Footer Bar -->
+            <div class="pagination-bar" id="logsPaginationBar" style="display: flex;">
+              <div class="pagination-info">
+                Showing page <strong id="logsCurrentPageNum">1</strong> of <strong id="logsTotalPagesNum">1</strong> (<span id="logsTotalRecordsNum">0</span> total logs)
+              </div>
+              <div class="pagination-controls">
+                <button type="button" class="btn-page-step" id="logsPrevBtn" disabled>
+                  <i class="fa-solid fa-chevron-left"></i> Previous
+                </button>
+                <div class="page-numbers-wrap" id="logsPageNumbers"></div>
+                <button type="button" class="btn-page-step" id="logsNextBtn" disabled>
+                  Next <i class="fa-solid fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: DEDICATED TEAM MANAGEMENT PAGE -->
+      <section class="view-section" id="teamViewSection" style="display: none;">
+        <div class="team-dashboard-container" style="padding: 24px 32px; width: 100%; height: 100%; flex: 1; overflow-y: auto; background-color: #f8fafc;">
+          <!-- Header -->
+          <div class="view-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="header-title-wrap">
+              <h2 style="font-size: 18px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-users-gear" style="color: var(--crm-primary);"></i> Team & Sub-Users Management
+              </h2>
+              <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Manage team members, roles (Super Admin, Sub Admin, Maker), and user access controls.</p>
+            </div>
+            <button type="button" class="header-notification-btn" title="Notifications">
+              <i class="fa-regular fa-bell"></i>
+              <span class="header-notif-badge" style="display: none;">0</span>
+            </button>
+          </div>
+
+          <!-- Add User Card -->
+          <div class="team-card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: var(--shadow-sm);">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 16px;">Add New Team Member</h3>
+            <form id="addTeamMemberForm" class="team-add-form" autocomplete="off">
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Full Name</label>
+                  <input type="text" id="newMemberName" placeholder="e.g. Rahul Sharma" autocomplete="off" required style="width: 100%; height: 38px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13px;">
+                </div>
+                <div class="form-group">
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Email Address</label>
+                  <input type="email" id="newMemberEmail" placeholder="rahul@company.com" autocomplete="new-email" required style="width: 100%; height: 38px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13px;">
+                </div>
+                <div class="form-group">
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Password</label>
+                  <div class="input-with-icon" style="position: relative;">
+                    <input type="password" id="newMemberPassword" placeholder="e.g. rahul123" autocomplete="new-password" required style="width: 100%; height: 38px; padding: 8px 36px 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13px;">
+                    <button type="button" class="btn-toggle-password" id="toggleNewMemberPasswordBtn" title="Toggle password visibility" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; padding: 4px;">
+                      <i class="fa-solid fa-eye"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Role</label>
+                  <select id="newMemberRole" class="custom-form-select" style="width: 100%; height: 38px;">
+                    <option value="maker">Maker</option>
+                    <option value="sub_admin">Sub Admin</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 9px 20px; border-radius: 8px; background: var(--crm-primary); color: #ffffff; font-weight: 600; border: none; cursor: pointer;">
+                  <i class="fa-solid fa-user-plus"></i> Add User
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Members List Card -->
+          <div class="team-card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+              <h3 style="font-size: 15px; font-weight: 700; color: var(--text-main); margin: 0;">
+                Team Members (<span id="teamMemberCount">0</span>)
+              </h3>
+            </div>
+            <div class="team-members-list-table" id="teamMembersListTable">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 5: CHANGE PASSWORD & ACCOUNT SECURITY -->
+      <section class="view-section" id="passwordViewSection" style="display: none;">
+        <div class="settings-dashboard-container" style="padding: 24px 32px; width: 100%; height: 100%; flex: 1; overflow-y: auto; background-color: #f8fafc;">
+          <!-- View Header -->
+          <div class="view-header" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+            <div class="header-title-wrap">
+              <h2 style="font-size: 18px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-key" style="color: var(--crm-primary);"></i> Change Password
+              </h2>
+              <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Update your account password and review security status.</p>
+            </div>
+            <button type="button" class="header-notification-btn" title="Notifications">
+              <i class="fa-regular fa-bell"></i>
+              <span class="header-notif-badge" style="display: none;">0</span>
+            </button>
+          </div>
+
+          <!-- Account & Password Grid -->
+          <div id="settingsAccountTabPane" style="display: block;">
+            <div class="settings-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; max-width: 1080px;">
+              
+              <!-- User Profile Summary Card -->
+              <div class="settings-card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 20px;">
+                <div style="display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px;">
+                  <div class="user-avatar-initials" id="settingsProfileAvatar" style="width: 56px; height: 56px; font-size: 20px; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #e2e8f0; color: #334155;">SA</div>
+                  <div>
+                    <h3 id="settingsProfileName" style="font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 4px 0; display: none;"></h3>
+                    <div id="settingsProfileEmail" style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 6px;">admin@zopmedia.com</div>
+                    <span id="settingsProfileRole" class="user-role-badge super_admin" style="font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase;">SUPER ADMIN</span>
+                  </div>
+                </div>
+
+                <div class="settings-info-list" style="display: flex; flex-direction: column; gap: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #64748b; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <span><i class="fa-regular fa-circle-check" style="color: #10b981; margin-right: 6px;"></i> Account Status</span>
+                    <span id="settingsProfileStatus" style="font-weight: 600; color: #10b981;">Active</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #64748b; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <span><i class="fa-solid fa-shield-halved" style="color: #6366f1; margin-right: 6px;"></i> Role Access</span>
+                    <span id="settingsProfileRoleDesc" style="font-weight: 600; color: var(--text-main);">Full Access</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #64748b; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #f1f5f9;">
+                    <span><i class="fa-regular fa-clock" style="color: #f59e0b; margin-right: 6px;"></i> Current Session</span>
+                    <span id="settingsProfileSessionTime" style="font-weight: 600; color: var(--text-main);">Active</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Change Password Card -->
+              <div class="settings-card" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; box-shadow: var(--shadow-sm);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
+                  <div style="width: 36px; height: 36px; border-radius: 8px; background: #fef2f2; color: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                    <i class="fa-solid fa-lock"></i>
+                  </div>
+                  <div>
+                    <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 2px 0;">Change Password</h3>
+                    <p style="font-size: 12.5px; color: #64748b; margin: 0;">Update your account password securely</p>
+                  </div>
+                </div>
+
+                <form id="changePasswordForm" class="settings-password-form" autocomplete="off">
+                  <div id="changePasswordAlert" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;"></div>
+                  
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Current Password *</label>
+                    <input type="password" id="oldPasswordInput" required style="width: 100%; height: 40px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">New Password *</label>
+                    <input type="password" id="newSettingsPasswordInput" required style="width: 100%; height: 40px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 24px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">Confirm Password *</label>
+                    <input type="password" id="confirmNewPasswordInput" required style="width: 100%; height: 40px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                  </div>
+
+                  <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="submit" id="submitChangePasswordBtn" class="btn-primary" style="padding: 9px 22px; border-radius: 8px; background: var(--crm-primary); color: #fff; border: none; cursor: pointer;">
+                      Update Password
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 6: ROLES & PERMISSIONS (RBAC FULL PAGE) -->
+      <section class="view-section" id="permissionsViewSection" style="display: none;">
+        <div class="settings-dashboard-container rbac-dashboard-container">
+          <!-- Header -->
+          <div class="rbac-header-section">
+            <div class="rbac-title-row">
+              <div>
+                <h1 class="rbac-page-title">Roles & Permissions</h1>
+                <p class="rbac-page-subtitle">Super Admin only — assign roles and control exactly what each role can do</p>
+              </div>
+              <button type="button" class="header-notification-btn" title="Notifications">
+                <i class="fa-regular fa-bell"></i>
+                <span class="header-notif-badge" style="display: none;">0</span>
+              </button>
+            </div>
+
+            <!-- Role Filter Pills -->
+            <div class="rbac-filter-pills-row" id="rbacRoleFilterPills">
+              <button type="button" class="rbac-filter-pill active" data-role="all">
+                All Users <span class="rbac-pill-badge" id="rbacPillCount_all">3</span>
+              </button>
+              <button type="button" class="rbac-filter-pill" data-role="super_admin">
+                Super Admin <span class="rbac-pill-badge" id="rbacPillCount_super_admin">1</span>
+              </button>
+              <button type="button" class="rbac-filter-pill" data-role="sub_admin">
+                Sub Admin <span class="rbac-pill-badge" id="rbacPillCount_sub_admin">1</span>
+              </button>
+              <button type="button" class="rbac-filter-pill" data-role="maker">
+                Maker <span class="rbac-pill-badge" id="rbacPillCount_maker">1</span>
+              </button>
+            </div>
+
+            <!-- View Switcher Tabs -->
+            <div class="rbac-view-tabs-row">
+              <button type="button" id="rbacTabBtnAssign" class="rbac-tab-btn active">
+                <i class="fa-solid fa-users"></i> Assign Roles
+              </button>
+              <button type="button" id="rbacTabBtnDefinitions" class="rbac-tab-btn">
+                <i class="fa-solid fa-shield-halved"></i> Role Definitions
+              </button>
+            </div>
+          </div>
+
+          <!-- PANE 1: ASSIGN ROLES (USER TABLE) -->
+          <div id="rbacAssignRolesPane" class="rbac-tab-pane active">
+            <!-- Search Bar -->
+            <div class="rbac-search-row">
+              <div class="rbac-search-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="rbacUserSearchInput" placeholder="Search by name or email...">
+              </div>
+              <div class="rbac-user-count-badge" id="rbacUserCountLabel">3 users</div>
+            </div>
+
+            <!-- Users Table Card -->
+            <div class="rbac-table-card">
+              <table class="rbac-users-table">
+                <thead>
+                  <tr>
+                    <th style="width: 30%;">USER</th>
+                    <th style="width: 28%;">EMAIL</th>
+                    <th style="width: 24%;">PERMISSIONS</th>
+                    <th style="width: 18%;">ROLE</th>
+                  </tr>
+                </thead>
+                <tbody id="rbacUsersTableBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- PANE 2: ROLE DEFINITIONS -->
+          <div id="rbacRoleDefinitionsPane" class="rbac-tab-pane" style="display: none;">
+            <div class="rbac-def-header-row">
+              <p class="rbac-def-desc">
+                Control exactly what each role can do. Edits apply on each user's next login; APIs enforce immediately.
+              </p>
+            </div>
+
+            <!-- All Roles Section Card -->
+            <div class="rbac-roles-card">
+              <div class="rbac-roles-card-header">
+                <h3>All Roles</h3>
+                <p>Click a role to edit its permissions. Super Admin is locked to full access.</p>
+              </div>
+
+              <div class="rbac-roles-list" id="rbacRoleCardsList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Role Permissions Edit Modal (Categorized 2-Column Grid) -->
+    <div class="modal-overlay" id="rolePermissionsModal" style="display: none; z-index: 10000;">
+      <div class="modal-card role-perm-modal-card">
+        <div class="modal-header role-perm-modal-header">
+          <div class="role-perm-title-wrap">
+            <h2 id="rolePermModalTitle">SUB ADMIN</h2>
+            <p id="rolePermModalSubtitle">Toggle what this role can do. Changes apply on each user's next login.</p>
+          </div>
+          <button type="button" id="closeRolePermModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <div class="role-perm-modal-body" id="rolePermModalBody">
+          <!-- Dynamically populated categorized 2-column checklist -->
+        </div>
+
+        <div class="role-perm-modal-footer">
+          <button type="button" id="cancelRolePermModalBtn" class="btn-secondary">Cancel</button>
+          <button type="button" id="saveRolePermsBtn" class="btn-primary btn-save-role-perms">Save Permissions</button>
+        </div>
+      </div>
+    </div>
+    </main>
+
+    <!-- Add New Lead Modal -->
+    <div class="modal-overlay" id="addLeadModal" style="display: none; z-index: 9999;">
+      <div class="modal-card" style="max-width: 520px; width: 90%;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <i class="fa-solid fa-user-plus" style="color: var(--crm-primary);"></i>
+            <h3>Create New Lead</h3>
+          </div>
+          <button id="closeAddLeadModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <form id="createLeadForm" style="padding: 20px;">
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-main);">Customer Name *</label>
+            <input type="text" id="newLeadName" placeholder="e.g. Ankit Sharma" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+          </div>
+
+          <div class="form-group-row" style="display: flex; gap: 12px; margin-bottom: 14px;">
+            <div style="flex: 1;">
+              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-main);">Phone Number <span style="color: #ef4444;">*</span></label>
+              <input type="tel" id="newLeadPhone" placeholder="e.g. +91 9876543210" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-main);">Source <span style="color: #ef4444;">*</span></label>
+              <select id="newLeadSource" required class="custom-form-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+                <option value="" disabled selected>Select Source...</option>
+                <option value="Website">Website</option>
+                <option value="Message">Message</option>
+                <option value="Direct WhatsApp">Direct WhatsApp</option>
+                <option value="Direct Phone call">Direct Phone call</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dynamic Custom Source input (shown when Other is selected) -->
+          <div class="form-group" id="newLeadCustomSourceGroup" style="display: none; margin-bottom: 14px;">
+            <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-main);">Specify Custom Source <span style="color: #ef4444;">*</span></label>
+            <input type="text" id="newLeadCustomSource" placeholder="e.g. Instagram, Referral, Walk-in, Trade Fair..." style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+          </div>
+
+          <div class="form-group-row" style="display: flex; gap: 12px; margin-bottom: 14px;">
+            <div style="flex: 1;">
+              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-main);">Initial Status</label>
+              <select id="newLeadStatus" class="custom-form-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+                <option value="new" selected>New</option>
+                <option value="contacted">Contacted</option>
+                <option value="follow_up">Follow Up</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-main);">Assignee</label>
+              <select id="newLeadAssignee" class="custom-form-select" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+                <option value="">Unassigned</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-main);">Initial Note</label>
+            <textarea id="newLeadNote" placeholder="Enter initial note..." rows="3" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px; resize: vertical;"></textarea>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+            <button type="button" id="cancelAddLeadBtn" class="btn-secondary" style="padding: 8px 16px; font-weight: 600;">Cancel</button>
+            <button type="submit" class="btn-primary" id="saveNewLeadSubmitBtn" style="padding: 8px 20px; font-weight: 600;">
+              <i class="fa-solid fa-check"></i> Create Lead
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Connection Status Overlay Popup -->
+    <div class="modal-overlay" id="connectionModal" style="display: none; z-index: 10000;">
+      <div class="modal-card connection-modal-card">
+        <div class="connection-modal-content">
+          <!-- State 1: Connecting (Loader Only) -->
+          <div class="connection-state" id="connectingState" style="display: flex;">
+            <div class="connection-icon-spinner" style="margin: 0;">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+            </div>
+          </div>
+
+          <!-- State 2: Connection Failed / Disconnected -->
+          <div class="connection-state" id="connectionFailedState" style="display: none;">
+            <div class="connection-icon-failed">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3>Database Connection Failed</h3>
+            <p id="connectionErrorMessage">Unable to connect to database. Please check your network connection.</p>
+            <div class="connection-modal-actions">
+              <button type="button" class="btn-primary" id="popupRetryBtn" style="padding: 10px 24px; font-weight: 600;">
+                <i class="fa-solid fa-rotate-right"></i> Retry Connection
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Sub-Users Management Modal -->
+    <div class="modal-overlay" id="teamManagementModal" style="display: none; z-index: 9999;">
+      <div class="modal-card team-modal-card" style="max-width: 650px; width: 90%;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <i class="fa-solid fa-users-gear" style="color: var(--crm-primary);"></i>
+            <h3>Team & Sub-Users Management</h3>
+          </div>
+          <button id="closeTeamModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px;">
+          <!-- Add New Sub-User Form -->
+          <form id="addTeamMemberForm" style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 130px;">
+              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Full Name</label>
+              <input type="text" id="newMemberName" placeholder="e.g. Rahul Sharma" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Email Address</label>
+              <input type="email" id="newMemberEmail" placeholder="rahul@company.com" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+            </div>
+            <div style="width: 120px;">
+              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Password</label>
+              <input type="text" id="newMemberPassword" placeholder="e.g. rahul123" required style="width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px;">
+            </div>
+            <div style="width: 120px;">
+              <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Role</label>
+              <select id="newMemberRole" class="custom-form-select">
+                <option value="maker" selected>Maker</option>
+                <option value="sub_admin">Sub Admin</option>
+              </select>
+            </div>
+            <button type="submit" class="btn-primary" style="padding: 8px 16px; height: 37px; font-weight: 600;">
+              <i class="fa-solid fa-plus"></i> Add User
+            </button>
+          </form>
+
+          <!-- Team Members List -->
+          <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">Team Members (<span id="teamMemberCount">0</span>)</h4>
+          <div id="teamMembersListTable" style="display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-overlay" id="configModal" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <i class="fa-solid fa-sliders"></i>
+            <h3>Database Configuration</h3>
+          </div>
+          <button id="closeModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <p class="modal-desc">
+            Enter your database project credentials. The panel will automatically listen to database <code>leads</code>
+            and <code>leads/{docId}/messages</code> in real time.
+          </p>
+
+          <form id="firebaseConfigForm">
+            <div class="form-group">
+              <label for="cfgApiKey">Database API Key</label>
+              <input type="text" id="cfgApiKey" placeholder="AIzaSy..." required>
+            </div>
+
+            <div class="form-group-row">
+              <div class="form-group">
+                <label for="cfgProjectId">Project ID</label>
+                <input type="text" id="cfgProjectId" placeholder="gold-cash-whatsapp" required>
+              </div>
+              <div class="form-group">
+                <label for="cfgAuthDomain">Auth Domain</label>
+                <input type="text" id="cfgAuthDomain" placeholder="gold-cash-whatsapp.firebaseapp.com">
+              </div>
+            </div>
+
+            <div class="form-group-row">
+              <div class="form-group">
+                <label for="cfgStorageBucket">Storage Bucket</label>
+                <input type="text" id="cfgStorageBucket" placeholder="gold-cash-whatsapp.appspot.com">
+              </div>
+              <div class="form-group">
+                <label for="cfgMessagingSenderId">Messaging Sender ID</label>
+                <input type="text" id="cfgMessagingSenderId" placeholder="57988479642">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="cfgAppId">App ID</label>
+              <input type="text" id="cfgAppId" placeholder="1:57988479642:web:...">
+            </div>
+
+            <div class="form-group">
+              <label for="cfgFunctionUrl">Callable Function Name / URL</label>
+              <input type="text" id="cfgFunctionUrl" placeholder="sendWhatsAppMessage">
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" id="resetConfigBtn" class="btn-secondary">Reset Defaults</button>
+              <button type="submit" id="saveConfigBtn" class="btn-primary">Save & Connect</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Media Attachment Input Modal -->
+    <div class="modal-overlay" id="mediaInputModal" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <i class="fa-solid fa-photo-film"></i>
+            <h3 id="mediaModalTitle">Attach Media</h3>
+          </div>
+          <button id="closeMediaModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <form id="mediaAttachmentForm">
+            <div class="form-group">
+              <label>Attachment Type</label>
+              <div class="media-type-toggle">
+                <button type="button" class="media-toggle-btn active" data-type="image" id="toggleTypeImage">
+                  <i class="fa-solid fa-image"></i> Image
+                </button>
+                <button type="button" class="media-toggle-btn" data-type="document" id="toggleTypeDoc">
+                  <i class="fa-solid fa-file-pdf"></i> PDF Document
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="mediaUrlInput">Direct Media URL</label>
+              <input type="url" id="mediaUrlInput" placeholder="https://images.unsplash.com/... or https://.../file.pdf"
+                required>
+            </div>
+
+            <div class="form-group" id="mediaFilenameGroup" style="display: none;">
+              <label for="mediaFilenameInput">File Name (with extension)</label>
+              <input type="text" id="mediaFilenameInput" placeholder="e.g., product_quotation_v2.pdf">
+            </div>
+
+            <div class="form-group">
+              <label for="mediaCaptionInput">Caption (Optional)</label>
+              <input type="text" id="mediaCaptionInput" placeholder="Add a caption for this media...">
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" id="cancelMediaModalBtn" class="btn-secondary">Cancel</button>
+              <button type="submit" id="addMediaModalBtn" class="btn-primary">Add Attachment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lightbox Viewer Modal -->
+    <div class="media-lightbox-overlay" id="imageLightboxModal" style="display: none;">
+      <div class="lightbox-top-bar">
+        <div class="lightbox-title-wrap">
+          <span class="lightbox-counter" id="lightboxCounter">1 / 1</span>
+          <span class="lightbox-caption-inline" id="lightboxInlineTitle">Image Preview</span>
+        </div>
+        <div class="lightbox-actions">
+          <a id="lightboxDownloadBtn" class="lightbox-btn" title="Download Media" download target="_blank"
+            rel="noopener noreferrer">
+            <i class="fa-solid fa-download"></i>
+          </a>
+          <a id="lightboxNewTabBtn" class="lightbox-btn" title="Open in New Tab" target="_blank"
+            rel="noopener noreferrer">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+          <button id="lightboxCloseBtn" class="lightbox-btn close-btn" title="Close (Esc)">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="lightbox-body">
+        <button id="lightboxPrevBtn" class="lightbox-nav-btn prev" title="Previous Image (←)">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+
+        <div class="lightbox-stage">
+          <div class="lightbox-img-wrapper" id="lightboxImgWrapper">
+            <img id="lightboxImage" src="" alt="Full view preview">
+          </div>
+          <div class="lightbox-caption-bar" id="lightboxCaption"></div>
+        </div>
+
+        <button id="lightboxNextBtn" class="lightbox-nav-btn next" title="Next Image (→)">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Export to Excel Modal Popup -->
+    <div class="modal-overlay" id="exportModal" style="display: none;">
+      <div class="modal-card export-modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <i class="fa-solid fa-file-excel" style="color: #16a34a; font-size: 20px;"></i>
+            <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main);">Export Leads to Excel</h3>
+          </div>
+          <button id="closeExportModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px;">
+          <!-- Export Scope Option -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label
+              style="font-weight: 600; font-size: 13px; color: var(--text-main); margin-bottom: 8px; display: block;">Select
+              Export Scope:</label>
+            <div class="radio-option-group">
+              <label class="radio-card">
+                <input type="radio" name="exportScope" value="all" checked>
+                <div class="radio-text">
+                  <strong>All Leads</strong>
+                  <span>Export all customer leads in the database</span>
+                </div>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="exportScope" value="duration">
+                <div class="radio-text">
+                  <strong>Specific Date Duration</strong>
+                  <span>Filter leads generated within a custom date range</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Date Range Inputs (Shown when duration is selected) -->
+          <div id="exportDateRangeFields" class="date-range-fields" style="display: none;">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="exportStartDate">Start Date</label>
+                <input type="date" id="exportStartDate" class="form-input">
+              </div>
+              <div class="form-group flex-1">
+                <label for="exportEndDate">End Date</label>
+                <input type="date" id="exportEndDate" class="form-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Filter Option -->
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label for="exportStatusSelect"
+              style="font-weight: 600; font-size: 13px; color: var(--text-main); margin-bottom: 6px; display: block;">Filter
+              by Status:</label>
+            <select id="exportStatusSelect" class="form-select">
+              <option value="all">All Active Statuses (Excluding Deleted)</option>
+              <option value="all_with_deleted">All Statuses (Including Deleted)</option>
+              <option value="new">New Only</option>
+              <option value="contacted">Contacted Only</option>
+              <option value="no_answer">No Answer Only</option>
+              <option value="follow_up">Follow Up Only</option>
+              <option value="converted">Converted Only</option>
+              <option value="lost">Lost Only</option>
+              <option value="deleted">Deleted Only</option>
+            </select>
+          </div>
+
+          <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" id="cancelExportBtn" class="btn-secondary">Cancel</button>
+            <button type="button" id="confirmDownloadExcelBtn" class="btn-primary btn-excel">
+              <i class="fa-solid fa-download"></i> Download Excel Sheet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Lead Confirmation Modal -->
+    <div class="modal-overlay" id="deleteConfirmModal" style="display: none;">
+      <div class="modal-card confirm-modal-card">
+        <div class="modal-header">
+          <div class="modal-title-wrap warning-title">
+            <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444; font-size: 20px;"></i>
+            <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main);">Delete Lead Confirmation</h3>
+          </div>
+          <button id="closeDeleteModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px;">
+          <p class="modal-desc"
+            style="font-size: 14px; color: var(--text-main); margin-bottom: 20px; line-height: 1.5;">
+            Are you sure you want to delete this lead? This lead will be moved to the <strong>Deleted</strong> tab.
+          </p>
+
+          <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" id="cancelDeleteModalBtn" class="btn-secondary">Cancel</button>
+            <button type="button" id="confirmDeleteModalBtn" class="btn-danger">
+              <i class="fa-regular fa-trash-can"></i> Move to Deleted
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lead Notes Modal Popup with History Listing -->
+    <div class="modal-overlay" id="leadNotesModal" style="display: none; z-index: 9999;">
+      <div class="modal-card lead-notes-modal-card" style="max-width: 560px; width: 92%; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <i class="fa-solid fa-note-sticky" style="color: var(--crm-primary); font-size: 20px;"></i>
+            <div>
+              <h3 id="leadNotesModalTitle" style="font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0;">Lead Notes</h3>
+              <span id="leadNotesModalSubtitle" style="font-size: 12px; color: var(--text-muted);">Manage notes for this lead</span>
+            </div>
+          </div>
+          <button id="closeLeadNotesModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 16px 20px; overflow-y: auto; flex: 1;">
+          <!-- Add New Note Form -->
+          <form id="leadNotesAddForm" style="margin-bottom: 20px;">
+            <label style="font-size: 12.5px; font-weight: 700; display: block; margin-bottom: 6px; color: var(--text-main);">
+              <i class="fa-solid fa-plus" style="color: var(--crm-primary);"></i> Add New Note
+            </label>
+            <div style="position: relative;">
+              <textarea id="leadNotesInput" placeholder="Type customer requirements, follow-up updates, call summary..." rows="3" required style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13px; line-height: 1.5; resize: vertical; box-sizing: border-box; font-family: inherit; transition: border-color 0.2s;"></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+              <button type="submit" class="btn-primary" id="saveLeadNotesSubmitBtn" style="padding: 7px 18px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-radius: 7px;">
+                <i class="fa-solid fa-plus"></i> Add Note
+              </button>
+            </div>
+          </form>
+
+          <!-- Notes History Section -->
+          <div class="notes-history-section">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
+              <span style="font-size: 12.5px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">
+                <i class="fa-solid fa-clock-rotate-left"></i> Notes History (<span id="leadNotesCount">0</span>)
+              </span>
+            </div>
+
+            <div id="leadNotesEmptyHistory" class="notes-empty-state" style="display: none; text-align: center; padding: 24px 10px; color: #94a3b8;">
+              <i class="fa-regular fa-note-sticky" style="font-size: 28px; margin-bottom: 8px; opacity: 0.6;"></i>
+              <p style="font-size: 13px; margin: 0;">No notes added yet for this lead.</p>
+            </div>
+
+            <!-- Dynamic Notes List -->
+            <div class="lead-notes-history-list" id="leadNotesHistoryList">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; background-color: #f8fafc; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+          <button type="button" id="cancelLeadNotesBtn" class="btn-secondary" style="padding: 7px 18px; font-size: 13px; font-weight: 600;">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Reset Password Modal Popup -->
+    <div class="modal-overlay" id="resetPasswordModal" style="display: none; z-index: 9999;">
+      <div class="modal-card" style="max-width: 440px; width: 90%;">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <i class="fa-solid fa-key" style="color: var(--crm-primary);"></i>
+            <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main);">Reset User Password</h3>
+          </div>
+          <button id="closeResetPasswordModalBtn" class="modal-close-btn">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px;">
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 16px;">
+            Set a new password for <strong id="resetTargetUserName">User</strong>.
+          </p>
+
+          <form id="resetPasswordForm">
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label for="newPasswordInput" style="display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px;">New Password</label>
+              <div class="input-with-icon" style="position: relative;">
+                <input type="password" id="newPasswordInput" placeholder="Enter new password..." required style="width: 100%; height: 40px; padding: 8px 36px 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13.5px;">
+                <button type="button" class="btn-toggle-password" id="toggleResetPasswordBtn" title="Toggle password visibility" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; padding: 4px;">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="modal-actions" style="display: flex; justify-content: flex-end; gap: 10px;">
+              <button type="button" id="cancelResetPasswordBtn" class="btn-secondary">Cancel</button>
+              <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px; background: var(--crm-primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                <i class="fa-solid fa-check"></i> Save Password
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+  <script type="module" src="js/constants/global-settings.js"></script>
+  <script type="module" src="firebase-config.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

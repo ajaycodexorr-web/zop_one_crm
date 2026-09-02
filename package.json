@@ -1,0 +1,19 @@
+{
+  "name": "zop-crm-panel",
+  "version": "1.0.0",
+  "description": "Zop One - Modern WhatsApp Lead & Live Chat Management Platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "firebase",
+    "firestore",
+    "realtime-chat",
+    "crm"
+  ],
+  "author": "",
+  "license": "MIT"
+}
