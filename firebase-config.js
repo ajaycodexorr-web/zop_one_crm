@@ -255,9 +255,16 @@ export function subscribeToUsers(onUpdate, onError) {
     usersUnsubscribe = onSnapshot(usersRef, (snapshot) => {
       const users = [];
       snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const email = (data.email || '').toLowerCase();
+        const name = (data.name || '').toLowerCase();
+        // Hide gold cash accounts completely in Zop One
+        if (email.includes('goldcash') || email.includes('gold cash') || email.includes('gold-cash') || email.includes('gold_cash') || name.includes('gold cash')) {
+          return;
+        }
         users.push({
           id: docSnap.id,
-          ...docSnap.data()
+          ...data
         });
       });
       if (onUpdate) onUpdate(users);
@@ -639,6 +646,12 @@ export async function fetchUsersFromFirestore() {
     const usersList = [];
     qSnap.forEach(docSnap => {
       const data = docSnap.data();
+      const email = (data.email || '').toLowerCase();
+      const name = (data.name || '').toLowerCase();
+      // Hide gold cash accounts completely in Zop One
+      if (email.includes('goldcash') || email.includes('gold cash') || email.includes('gold-cash') || email.includes('gold_cash') || name.includes('gold cash')) {
+        return;
+      }
       usersList.push({
         id: docSnap.id,
         ...data

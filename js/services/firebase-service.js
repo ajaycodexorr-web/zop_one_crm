@@ -11,7 +11,7 @@ import { addLeadNotification, initLeadNotifications } from '../components/notifi
 import { addAuditLog, saveLogsToLocalStorage, updateLogsBadge } from './logging-service.js';
 import { normalizePhone } from '../utils/formatters.js';
 
-import { syncAllUsersToFirestore, saveTeamMembers, syncRolesFromFirestore } from './user-service.js';
+import { syncAllUsersToFirestore, saveTeamMembers, syncRolesFromFirestore, containsGoldCash, sanitizeTeamMembers } from './user-service.js';
 import { logoutUser } from './auth-service.js';
 import { updateComposerDisabledState } from '../components/composer.js';
 
@@ -91,13 +91,17 @@ function startRealtimeSync(renderLeadsView, renderConversationsView, renderLogsV
   }
   state.unsubscribeUsers = subscribeToUsers((users) => {
     if (users && users.length > 0) {
-      // Sync Firestore users with local team members state
-      state.teamMembers = users;
-      saveTeamMembers(users);
+      const sanitized = sanitizeTeamMembers(users);
+      state.teamMembers = sanitized;
+      saveTeamMembers(sanitized);
+
+      if (!state.currentUser || containsGoldCash(state.currentUser.email) || containsGoldCash(state.currentUser.name)) {
+        state.currentUser = state.teamMembers.find(u => u.role === 'super_admin') || state.teamMembers[0];
+      }
 
       // Verify currently active user has not been deleted by admin
       if (state.currentUser && !['super_admin', 'admin'].includes(state.currentUser.role)) {
-        const stillExists = users.some(u => u.id === state.currentUser.id);
+        const stillExists = sanitized.some(u => u.id === state.currentUser.id);
         if (!stillExists) {
           showToast("Your account has been deleted by an administrator.", "error");
           setTimeout(() => {
@@ -131,10 +135,21 @@ function startRealtimeSync(renderLeadsView, renderConversationsView, renderLogsV
   }
   state.unsubscribeLogs = subscribeToActivityLogs((remoteLogs) => {
     if (remoteLogs && Array.isArray(remoteLogs)) {
-      const localLogs = state.logs || [];
+      const filteredRemote = remoteLogs.filter(l => 
+        !containsGoldCash(l.performedBy) && 
+        !containsGoldCash(l.details) && 
+        !containsGoldCash(l.leadName)
+      );
+
+      const localLogs = (state.logs || []).filter(l => 
+        !containsGoldCash(l.performedBy) && 
+        !containsGoldCash(l.details) && 
+        !containsGoldCash(l.leadName)
+      );
+
       const logMap = new Map();
 
-      remoteLogs.forEach(l => logMap.set(l.id, l));
+      filteredRemote.forEach(l => logMap.set(l.id, l));
       localLogs.forEach(l => {
         if (!logMap.has(l.id)) logMap.set(l.id, l);
       });

@@ -38,11 +38,18 @@ export function addAuditLog(actionType, leadId, leadName, details, overridePerfo
   updateLogsBadge();
 }
 
+export function isGoldCashLog(log) {
+  if (!log) return false;
+  const str = `${log.performedBy || ''} ${log.details || ''} ${log.leadName || ''} ${log.performerRole || ''}`.toLowerCase();
+  return str.includes('goldcash') || str.includes('gold cash') || str.includes('gold-cash') || str.includes('gold_cash');
+}
+
 export function loadSavedLogs() {
   try {
     const saved = localStorage.getItem('crm_activity_logs');
     if (saved) {
-      state.logs = JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      state.logs = (Array.isArray(parsed) ? parsed : []).filter(l => !isGoldCashLog(l));
     } else {
       state.logs = [
         {
@@ -50,7 +57,7 @@ export function loadSavedLogs() {
           actionType: 'status_change',
           leadId: '919876543210',
           leadName: 'Maya Lin',
-          performedBy: 'Admin User',
+          performedBy: 'Super Admin',
           details: 'Updated lead status to NEW',
           timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString()
         },
@@ -59,7 +66,7 @@ export function loadSavedLogs() {
           actionType: 'message_sent',
           leadId: '919876543210',
           leadName: 'Maya Lin',
-          performedBy: 'Admin User',
+          performedBy: 'Super Admin',
           details: 'Sent WhatsApp response regarding webhook sync',
           timestamp: new Date(Date.now() - 20 * 60 * 1000).toISOString()
         },
@@ -68,7 +75,7 @@ export function loadSavedLogs() {
           actionType: 'delete_lead',
           leadId: '919811223344',
           leadName: 'Rohan Sharma',
-          performedBy: 'Admin User',
+          performedBy: 'Super Admin',
           details: 'Deleted lead and moved to Deleted status',
           timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString()
         }
@@ -83,7 +90,9 @@ export function loadSavedLogs() {
 
 export function saveLogsToLocalStorage() {
   try {
-    localStorage.setItem('crm_activity_logs', JSON.stringify(state.logs.slice(0, 250)));
+    const cleanLogs = (state.logs || []).filter(l => !isGoldCashLog(l));
+    state.logs = cleanLogs;
+    localStorage.setItem('crm_activity_logs', JSON.stringify(cleanLogs.slice(0, 250)));
   } catch (e) {}
 }
 

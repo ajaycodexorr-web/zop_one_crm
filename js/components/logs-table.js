@@ -6,7 +6,7 @@ import { state } from '../state/app-state.js';
 import { elements } from '../dom/elements.js';
 import { escapeHtml, formatFullDateTime, formatDisplayPhone } from '../utils/formatters.js';
 import { showToast } from '../utils/notifications.js';
-import { saveLogsToLocalStorage, updateLogsBadge, getLogCategory } from '../services/logging-service.js';
+import { saveLogsToLocalStorage, updateLogsBadge, getLogCategory, isGoldCashLog } from '../services/logging-service.js';
 
 export function setupLogsHandlers() {
   if (elements.logsSearchInput) {
@@ -42,7 +42,7 @@ export function renderLogsView() {
 
   updateLogsBadge();
 
-  let filtered = state.logs;
+  let filtered = (state.logs || []).filter(l => !isGoldCashLog(l));
 
   if (state.logsFilter !== 'all') {
     filtered = filtered.filter(l => {

@@ -268,6 +268,61 @@ export function hasPermission(permissionKey, user = state.currentUser) {
 }
 
 // ==========================================================================
+// Gold Cash Protection & Sanitization Helper
+// ==========================================================================
+export function containsGoldCash(val) {
+  if (!val) return false;
+  const str = String(val).toLowerCase();
+  return str.includes('goldcash') || 
+         str.includes('gold cash') || 
+         str.includes('gold-cash') || 
+         str.includes('gold_cash');
+}
+
+export function sanitizeTeamMembers(rawList) {
+  if (!Array.isArray(rawList)) return JSON.parse(JSON.stringify(DEFAULT_TEAM_MEMBERS));
+
+  const cleaned = [];
+  let hasSuperAdmin = false;
+
+  for (const raw of rawList) {
+    if (!raw) continue;
+    const isGold = containsGoldCash(raw.email) || containsGoldCash(raw.name) || containsGoldCash(raw.id);
+
+    // If it's a super admin from the database (even if it had goldcash email), convert to Zop One Super Admin
+    if (raw.role === 'super_admin' || raw.id === 'usr_admin' || isGold) {
+      if (raw.role === 'super_admin' || raw.id === 'usr_admin') {
+        if (!hasSuperAdmin) {
+          cleaned.push({
+            ...raw,
+            id: 'usr_admin',
+            name: 'Super Admin',
+            email: 'admin@zopmedia.com',
+            password: (raw.password && !isGold) ? raw.password : 'admin123',
+            role: 'super_admin',
+            status: 'active'
+          });
+          hasSuperAdmin = true;
+        }
+        continue;
+      }
+
+      // If it's any other account with gold cash in name/email, omit completely
+      continue;
+    }
+
+    // Normal Sub Admin / Maker
+    cleaned.push({ ...raw });
+  }
+
+  if (!hasSuperAdmin) {
+    cleaned.unshift(DEFAULT_TEAM_MEMBERS[0]);
+  }
+
+  return cleaned;
+}
+
+// ==========================================================================
 // Team Members Storage & Sync
 // ==========================================================================
 export function loadTeamMembers() {
@@ -275,15 +330,8 @@ export function loadTeamMembers() {
   try {
     const saved = localStorage.getItem('crm_team_members_v3');
     if (saved) {
-      state.teamMembers = JSON.parse(saved);
-      const adminIdx = state.teamMembers.findIndex(u => u.id === 'usr_admin' || u.role === 'super_admin');
-      if (adminIdx !== -1) {
-        state.teamMembers[adminIdx].email = 'admin@zopmedia.com';
-        state.teamMembers[adminIdx].password = 'admin123';
-        state.teamMembers[adminIdx].name = 'Super Admin';
-      } else {
-        state.teamMembers.unshift(DEFAULT_TEAM_MEMBERS[0]);
-      }
+      const parsed = JSON.parse(saved);
+      state.teamMembers = sanitizeTeamMembers(parsed);
       saveTeamMembers();
     } else {
       state.teamMembers = JSON.parse(JSON.stringify(DEFAULT_TEAM_MEMBERS));
@@ -295,10 +343,10 @@ export function loadTeamMembers() {
 
   const savedCurrentId = localStorage.getItem('crm_current_user_id');
   if (savedCurrentId) {
-    const found = state.teamMembers.find(u => u.id === savedCurrentId);
+    const found = state.teamMembers.find(u => u.id === savedCurrentId && !containsGoldCash(u.email));
     if (found) state.currentUser = found;
   }
-  if (!state.currentUser) {
+  if (!state.currentUser || containsGoldCash(state.currentUser.email) || containsGoldCash(state.currentUser.name)) {
     state.currentUser = state.teamMembers.find(u => u.role === 'super_admin') || state.teamMembers[0] || DEFAULT_TEAM_MEMBERS[0];
   }
 
@@ -332,12 +380,9 @@ export async function syncUsersFromFirestore() {
   try {
     const fUsers = await fetchUsersFromFirestore();
     if (fUsers && Array.isArray(fUsers) && fUsers.length > 0) {
-      const merged = [...fUsers];
-      if (!merged.some(u => u.role === 'super_admin' || u.id === 'usr_admin')) {
-        merged.unshift(DEFAULT_TEAM_MEMBERS[0]);
-      }
+      const sanitizedRemote = sanitizeTeamMembers(fUsers);
 
-      state.teamMembers = merged.map(fUser => {
+      state.teamMembers = sanitizedRemote.map(fUser => {
         const existing = state.teamMembers.find(m => m.id === fUser.id);
         return {
           ...fUser,
@@ -345,6 +390,15 @@ export async function syncUsersFromFirestore() {
           password: fUser.password || (existing ? existing.password : '123')
         };
       });
+
+      if (!state.teamMembers.some(u => u.role === 'super_admin' || u.id === 'usr_admin')) {
+        state.teamMembers.unshift(DEFAULT_TEAM_MEMBERS[0]);
+      }
+
+      if (!state.currentUser || containsGoldCash(state.currentUser.email) || containsGoldCash(state.currentUser.name)) {
+        state.currentUser = state.teamMembers.find(u => u.role === 'super_admin') || state.teamMembers[0] || DEFAULT_TEAM_MEMBERS[0];
+      }
+
       saveTeamMembers();
     }
   } catch (err) {

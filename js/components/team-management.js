@@ -6,7 +6,7 @@ import { state } from '../state/app-state.js';
 import { elements } from '../dom/elements.js';
 import { escapeHtml, getInitials } from '../utils/formatters.js';
 import { showToast } from '../utils/notifications.js';
-import { addSubUser, toggleUserStatus, deleteSubUser, resetUserPassword } from '../services/user-service.js';
+import { addSubUser, toggleUserStatus, deleteSubUser, resetUserPassword, containsGoldCash } from '../services/user-service.js';
 import { addAuditLog } from '../services/logging-service.js';
 
 let pendingResetUserId = null;
@@ -165,8 +165,16 @@ export function renderTeamList(onTeamUpdated) {
   if (!container) return;
 
   const allUsers = state.teamMembers || [];
-  // Exclude Super Admin so the table only displays created Sub Admins and Makers
-  const users = allUsers.filter(u => u.role !== 'super_admin' && u.role !== 'admin' && u.id !== 'usr_admin' && u.email !== 'admin@zopmedia.com' && u.email !== 'admin@zopcrm.com' && u.email !== 'admin@goldcash.com');
+  // Exclude Super Admin and any legacy Gold Cash accounts so the table only displays valid Zop One Sub Admins and Makers
+  const users = allUsers.filter(u => 
+    u.role !== 'super_admin' && 
+    u.role !== 'admin' && 
+    u.id !== 'usr_admin' && 
+    !containsGoldCash(u.email) && 
+    !containsGoldCash(u.name) && 
+    u.email !== 'admin@zopmedia.com' && 
+    u.email !== 'admin@zopcrm.com'
+  );
   if (countEl) countEl.textContent = users.length;
 
   if (users.length === 0) {
